@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Прогноз курса евро-доллар</title>
+    <link rel="stylesheet" href="static/style.css">
+    <style>
+        #days-form {
+            text-align: center;
+            margin-top: 20px;
+            position: relative;
+            z-index: 1000;
+            display: inline-block;
+            background-color: #8C8C8A;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #background-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.5;
+        }
+        #exchange-rate {
+            position: relative;
+            z-index: 1000;
+            text-align: center;
+            display: inline-block;
+            margin-top: 20px;
+            background-color: #8C8C8A;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 25px;
+        }
+        #days {
+            font-size: 2em;
+        }
+        #predict-exchange-rate {
+            font-size: 1.5em;
+            padding: 10px 20px;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #chart-container {
+            margin-top: 20px;
+            text-align: center;
+            z-index: 2000;
+            position: relative;
+        }
+        #chart {
+            width: 80%;
+            height: 400px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>  
+    {% include 'header.html' %} 
+
+    <form id="days-form">
+        <label for="days">Введите количество дней:</label>
+        <input type="number" id="days" name="days" min="1" max="60">
+        <button type="button" id="predict-exchange-rate">Показать прогноз</button>
+    </form>
+
+    <p id="exchange-rate"></p>
+
+    <div id="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>        
+        document.getElementById('predict-exchange-rate').addEventListener('click', () => {
+            const days = document.getElementById('days').value;
+
+            fetch('http://127.0.0.1:8000/tseries_predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ days: days })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('exchange-rate').textContent = `Ошибка: ${data.error}`;
+                } else {
+                    document.getElementById('exchange-rate').textContent = `Прогноз курса евро-доллар на ${days} дней:`;
+                    const ctx = document.getElementById('chart').getContext('2d');
+                    
+                    // Уничтожаем предыдущий график, если он есть
+                    if (window.myChart) {
+                        window.myChart.destroy();
+                    }
+
+                    window.myChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.dates,
+                            datasets: [{
+                                label: 'Прогнозируемый курс',
+                                data: data.predictions,
+                                backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                                borderColor: '#23D532',
+                                borderWidth: 2,
+                                fill: false,
+                                pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: 'rgba(255, 99, 132, 1)'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Дата',
+                                        color: '#333',
+                                        font: {
+                                            size: 16
+                                        }
+                                    },
+                                    grid: {
+                                        color: 'rgba(200, 200, 200, 0.2)'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Курс евро-доллар',
+                                        color: '#333',
+                                        font: {
+                                            size: 16
+                                        }
+                                    },
+                                    grid: {
+                                        color: 'rgba(200, 200, 200, 0.2)'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: '#333',
+                                        font: {
+                                            size: 14
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
